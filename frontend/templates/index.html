@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OceanWatch AI — Ocean Waste Detection System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="static/css/style.css" />
+</head>
+<body>
+
+<!-- ── Background canvas ───────────────────────────────────────────── -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- ── Navigation ─────────────────────────────────────────────────── -->
+<nav class="nav">
+  <div class="nav__brand">
+    <span class="nav__icon">◉</span>
+    <span class="nav__wordmark">OceanWatch<em>AI</em></span>
+  </div>
+  <div class="nav__links">
+    <button class="nav__btn active" data-view="detect">Detect</button>
+    <button class="nav__btn" data-view="dashboard">Dashboard</button>
+    <button class="nav__btn" data-view="compare">Compare</button>
+    <button class="nav__btn" data-view="thermal">Thermal</button>
+  </div>
+  <div class="nav__status">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Connecting…</span>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!--  VIEW: DETECT                                                       -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<main class="view active" id="view-detect">
+
+  <section class="hero">
+    <div class="hero__eyebrow">Drone · Satellite · AI</div>
+    <h1 class="hero__title">Ocean Waste<br><span>Detection</span></h1>
+    <p class="hero__sub">Upload aerial ocean imagery to identify and classify marine debris in real time using AI-powered computer vision.</p>
+  </section>
+
+  <!-- Upload zone -->
+  <div class="upload-card" id="upload-card">
+    <div class="upload-zone" id="upload-zone">
+      <div class="upload-zone__inner" id="upload-inner">
+        <svg class="upload-zone__icon" viewBox="0 0 80 80" fill="none">
+          <circle cx="40" cy="40" r="38" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <path d="M40 52 L40 28 M30 38 L40 28 L50 38" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M28 56 h24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        </svg>
+        <p class="upload-zone__primary">Drop ocean image here</p>
+        <p class="upload-zone__secondary">or <label class="upload-link" for="file-input">browse files</label></p>
+        <p class="upload-zone__hint">JPG / PNG / WEBP · max 20 MB</p>
+      </div>
+    </div>
+    <input type="file" id="file-input" accept="image/*" hidden />
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-wrap hidden" id="progress-wrap">
+    <div class="progress-bar" id="progress-bar"></div>
+    <span class="progress-label" id="progress-label">Uploading…</span>
+  </div>
+
+  <!-- Result panel -->
+  <div class="result-panel hidden" id="result-panel">
+    <div class="result-panel__images">
+      <div class="image-slot">
+        <div class="image-slot__label">Original</div>
+        <img id="img-original" src="" alt="Original ocean image" />
+      </div>
+      <div class="image-slot image-slot--result">
+        <div class="image-slot__label">AI Detection</div>
+        <img id="img-result" src="" alt="Detection result" />
+      </div>
+    </div>
+
+    <div class="result-panel__stats" id="result-stats">
+      <!-- filled by JS -->
+    </div>
+
+    <div class="detections-table-wrap">
+      <h3 class="section-heading">Detected Objects</h3>
+      <table class="detections-table" id="detections-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Category</th>
+            <th>Confidence</th>
+            <th>Bounding Box</th>
+            <th>Area (px²)</th>
+          </tr>
+        </thead>
+        <tbody id="detections-tbody"></tbody>
+      </table>
+    </div>
+
+    <button class="btn btn--ghost" id="reset-btn">← Analyse Another Image</button>
+  </div>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!--  VIEW: DASHBOARD                                                    -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<main class="view" id="view-dashboard">
+  <section class="hero hero--sm">
+    <div class="hero__eyebrow">Analytics</div>
+    <h1 class="hero__title">Detection <span>Dashboard</span></h1>
+  </section>
+
+  <!-- KPI cards -->
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi-card" data-stat="total_analyses">
+      <div class="kpi-card__value" id="kpi-total">—</div>
+      <div class="kpi-card__label">Total Analyses</div>
+    </div>
+    <div class="kpi-card kpi-card--warn" data-stat="total_waste_items">
+      <div class="kpi-card__value" id="kpi-waste">—</div>
+      <div class="kpi-card__label">Waste Items Found</div>
+    </div>
+    <div class="kpi-card" data-stat="avg_confidence">
+      <div class="kpi-card__value" id="kpi-conf">—</div>
+      <div class="kpi-card__label">Avg Confidence %</div>
+    </div>
+    <div class="kpi-card kpi-card--danger" data-stat="polluted_ocean_pct">
+      <div class="kpi-card__value" id="kpi-poll">—</div>
+      <div class="kpi-card__label">Polluted Images %</div>
+    </div>
+    <div class="kpi-card kpi-card--clean" data-stat="clean_ocean_pct">
+      <div class="kpi-card__value" id="kpi-clean">—</div>
+      <div class="kpi-card__label">Clean Images %</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-card__value kpi-card__value--sm" id="kpi-common">—</div>
+      <div class="kpi-card__label">Most Common Waste</div>
+    </div>
+  </div>
+
+  <!-- Donut chart placeholder -->
+  <div class="chart-area">
+    <canvas id="waste-chart" width="340" height="260"></canvas>
+    <div class="chart-legend" id="chart-legend"></div>
+  </div>
+
+  <!-- History table -->
+  <div class="history-wrap">
+    <div class="history-header">
+      <h3 class="section-heading">Analysis History</h3>
+      <button class="btn btn--sm" id="refresh-history-btn">↻ Refresh</button>
+    </div>
+    <div class="history-table-scroll">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Preview</th>
+            <th>File</th>
+            <th>Date / Time</th>
+            <th>Objects</th>
+            <th>Confidence</th>
+            <th>Health</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="history-tbody">
+          <tr><td colspan="8" class="table-empty">No analyses yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</main>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!--  VIEW: COMPARE                                                      -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<main class="view" id="view-compare">
+  <section class="hero hero--sm">
+    <div class="hero__eyebrow">Side-by-Side</div>
+    <h1 class="hero__title">Ocean <span>Comparison</span></h1>
+    <p class="hero__sub">Upload a clean reference image alongside a potentially polluted one to generate a side-by-side comparison.</p>
+  </section>
+
+  <div class="compare-grid">
+    <div class="compare-slot" id="compare-clean-slot">
+      <div class="compare-slot__label clean-label">◉ Clean Ocean</div>
+      <div class="compare-drop" id="compare-clean-drop">
+        <p>Drop clean image</p>
+        <label class="upload-link" for="compare-clean-input">Browse</label>
+      </div>
+      <input type="file" id="compare-clean-input" accept="image/*" hidden />
+      <img class="compare-preview hidden" id="compare-clean-preview" src="" alt="" />
+    </div>
+
+    <div class="compare-slot" id="compare-polluted-slot">
+      <div class="compare-slot__label polluted-label">⚠ Polluted Sample</div>
+      <div class="compare-drop" id="compare-polluted-drop">
+        <p>Drop polluted image</p>
+        <label class="upload-link" for="compare-polluted-input">Browse</label>
+      </div>
+      <input type="file" id="compare-polluted-input" accept="image/*" hidden />
+      <img class="compare-preview hidden" id="compare-polluted-preview" src="" alt="" />
+    </div>
+  </div>
+
+  <div class="compare-actions">
+    <button class="btn btn--primary" id="compare-btn" disabled>Generate Comparison →</button>
+  </div>
+
+  <div class="compare-result hidden" id="compare-result">
+    <h3 class="section-heading">Comparison Result</h3>
+    <img id="compare-output" src="" alt="Comparison" class="compare-output-img" />
+    <div id="compare-summary"></div>
+  </div>
+</main>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!--  VIEW: THERMAL                                                      -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<main class="view" id="view-thermal">
+  <section class="hero hero--sm">
+    <div class="hero__eyebrow">Simulation</div>
+    <h1 class="hero__title">Thermal <span>Analysis</span></h1>
+    <p class="hero__sub">Simulates infrared/thermal imaging using colour-space transforms to highlight abnormal surface regions.</p>
+  </section>
+
+  <div class="upload-card">
+    <div class="upload-zone" id="thermal-zone">
+      <div class="upload-zone__inner">
+        <svg class="upload-zone__icon thermal-icon" viewBox="0 0 80 80" fill="none">
+          <circle cx="40" cy="40" r="38" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <circle cx="40" cy="40" r="18" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="40" cy="40" r="6" fill="currentColor" opacity="0.5"/>
+          <path d="M40 18 v-6 M40 68 v-6 M18 40 h-6 M68 40 h-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <p class="upload-zone__primary">Drop image for thermal simulation</p>
+        <p class="upload-zone__secondary">or <label class="upload-link" for="thermal-input">browse files</label></p>
+      </div>
+    </div>
+    <input type="file" id="thermal-input" accept="image/*" hidden />
+  </div>
+
+  <div class="thermal-result hidden" id="thermal-result">
+    <div class="result-panel__images">
+      <div class="image-slot">
+        <div class="image-slot__label">Original</div>
+        <img id="thermal-original" src="" alt="Original" />
+      </div>
+      <div class="image-slot">
+        <div class="image-slot__label">Thermal Simulation</div>
+        <img id="thermal-output" src="" alt="Thermal" />
+      </div>
+    </div>
+    <div class="thermal-legend">
+      <div class="legend-item"><span class="swatch" style="background:#00008B"></span>Cool / Deep Water</div>
+      <div class="legend-item"><span class="swatch" style="background:#00BFFF"></span>Surface Water</div>
+      <div class="legend-item"><span class="swatch" style="background:#00FF00"></span>Shallow / Warm</div>
+      <div class="legend-item"><span class="swatch" style="background:#FFFF00"></span>Debris / Anomaly</div>
+      <div class="legend-item"><span class="swatch" style="background:#FF4500"></span>High Concentration</div>
+    </div>
+  </div>
+</main>
+
+<!-- ── Toast notifications ─────────────────────────────────────────── -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ── Image lightbox ─────────────────────────────────────────────── -->
+<div class="lightbox hidden" id="lightbox">
+  <div class="lightbox__backdrop" id="lightbox-backdrop"></div>
+  <img class="lightbox__img" id="lightbox-img" src="" alt="" />
+  <button class="lightbox__close" id="lightbox-close">✕</button>
+</div>
+
+<script src="static/js/app.js"></script>
+</body>
+</html>
